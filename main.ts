@@ -7,6 +7,14 @@ const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 const outputPath = join(outputDir, 'entry.png');
 const image = readFileSync(sourcePath);
 const chunkSize = 64 * 1024;
+const header = image.subarray(0, 4);
+const isPng = header.length >= 4 && header.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+const isJpeg = header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+
+if (!isPng && !isJpeg) {
+  const found = header.length === 0 ? 'no bytes (empty file)' : `0x${header.toString('hex')}`;
+  throw new Error(`Unsupported image format: found ${found}, expected PNG (89504e47) or JPEG (ffd8ff)`);
+}
 
 mkdirSync(outputDir, { recursive: true });
 
@@ -32,3 +40,4 @@ if (writtenImage.length !== image.length) {
 if (!writtenImage.equals(image)) {
   throw new Error('Written image differs from the bundled source');
 }
+process.stderr.write(`Copied ${writtenImage.length} bytes to ${outputPath}\n`);
